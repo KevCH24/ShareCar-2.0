@@ -104,7 +104,7 @@ export const AdminAddVehicle: React.FC = () => {
 
                 {status && (
                     <div className={`mt-6 p-4 rounded-xl text-sm font-medium text-center border ${isSuccess ? "bg-emerald-900/20 border-emerald-900 text-emerald-400" :
-                            isError ? "bg-rose-900/20 border-rose-900 text-rose-400" : "bg-slate-800 border-slate-700 text-slate-300"
+                        isError ? "bg-rose-900/20 border-rose-900 text-rose-400" : "bg-slate-800 border-slate-700 text-slate-300"
                         }`}>
                         {status}
                     </div>

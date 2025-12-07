@@ -43,6 +43,12 @@ export async function createOrderForProducts(
 ): Promise<number> {
   const client = await getSignedClientForOrders();
   const tx = await client.create_order({ products: productNames });
+
+  // Explicit simulation log for demo purposes
+  console.log("Simulating transaction...");
+  const sim = await tx.simulate();
+  console.log("Simulation result:", sim);
+
   const sent = await tx.signAndSend();
   return sent.result as unknown as number;
 }

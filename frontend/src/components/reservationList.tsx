@@ -111,8 +111,8 @@ export const ReservationList: React.FC = () => {
                                             key={o.id}
                                             onClick={() => setSelected(o)}
                                             className={`relative flex flex-col rounded-2xl border p-5 text-left transition-all ${isSelected
-                                                    ? "bg-slate-900 border-indigo-500 shadow-lg shadow-indigo-500/10"
-                                                    : "bg-slate-900/40 border-slate-800 hover:bg-slate-800/60"
+                                                ? "bg-slate-900 border-indigo-500 shadow-lg shadow-indigo-500/10"
+                                                : "bg-slate-900/40 border-slate-800 hover:bg-slate-800/60"
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between mb-4">

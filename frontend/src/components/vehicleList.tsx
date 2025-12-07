@@ -1,8 +1,18 @@
 // src/components/vehicleList.tsx
 import React, { useEffect, useState } from "react";
-import { fetchVehicles, Vehicle, encodeVehicleName } from "../stellar/vehicleQueries";
+import { fetchVehicles, type Vehicle, encodeVehicleName } from "../stellar/vehicleQueries";
 import { createOrderForProducts } from "../stellar/orderActions";
 import { addProductWithFreighter } from "../stellar/adminActions";
+
+// Interface for Simulated Transaction Data
+interface SimulatedTx {
+    hash: string;
+    network: string;
+    fee: string;
+    source: string;
+    operation: string;
+    status: string;
+}
 
 export const VehicleList: React.FC = () => {
     // --- STATE ---
@@ -21,7 +31,13 @@ export const VehicleList: React.FC = () => {
 
     // Reservation State
     const [reserving, setReserving] = useState<string | null>(null); // Model being reserved
+    const [resStatus, setResStatus] = useState(""); // Status text for reservation
     const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null); // Index of vehicle to show reviews
+
+    // Transaction Simulation State
+    const [txModal, setTxModal] = useState<SimulatedTx | null>(null);
+    const [pendingReservation, setPendingReservation] = useState<{ vehicle: Vehicle, encodedName: string } | null>(null);
+
 
     // --- ACTIONS ---
 
@@ -75,15 +91,61 @@ export const VehicleList: React.FC = () => {
     const handleReservation = async (v: Vehicle) => {
         try {
             setReserving(v.model);
+            setResStatus("Simulando...");
+
             const encodedName = encodeVehicleName(v.brand, v.model, v.availability, v.description);
-            await createOrderForProducts([encodedName]);
-            alert(`Reserva exitosa para ${v.model}`);
+
+            // 1. Simulate Transaction Data - SHARECAR SPECIFIC
+            const mockTx: SimulatedTx = {
+                hash: "5c8d9a..." + Math.random().toString(36).substring(2, 6) + " (Pre-submission)",
+                network: "Stellar Futurenet (Testnet)",
+                fee: "100 stroops (0.00001 XLM)",
+                source: "G...CLIENT_WALLET",
+                operation: `invoke_contract(
+    contract: "ShareCar_Core_v1", 
+    fn: "reserve_vehicle", 
+    args: [
+        "${v.brand} ${v.model}", 
+        "${v.rate} XLM/hr"
+    ]
+)`,
+                status: "Simulation Success"
+            };
+
+            // 2. Open Modal with this data
+            setTxModal(mockTx);
+            setPendingReservation({ vehicle: v, encodedName });
+
+        } catch (e: any) {
+            alert(`Error: ${e.message}`);
+            setReserving(null);
+        }
+    };
+
+    const confirmReservation = async () => {
+        if (!pendingReservation) return;
+
+        try {
+            setTxModal(null); // Close modal
+            setResStatus("Firma en Wallet..."); // Update button status
+
+            // 3. Actually execute the transaction
+            await createOrderForProducts([pendingReservation.encodedName]);
+
+            alert(`Reserva exitosa para ${pendingReservation.vehicle.model}`);
         } catch (e: any) {
             alert(`Error: ${e.message}`);
         } finally {
             setReserving(null);
+            setPendingReservation(null);
         }
     };
+
+    const cancelReservation = () => {
+        setTxModal(null);
+        setReserving(null);
+        setPendingReservation(null);
+    }
 
     const toggleReviews = (index: number) => {
         if (expandedReviewId === index) {
@@ -98,10 +160,79 @@ export const VehicleList: React.FC = () => {
     }
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-12 relative">
+
+            {/* TRANSACTION MODAL */}
+            {txModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="bg-slate-900 border border-indigo-500 rounded-xl max-w-lg w-full p-6 shadow-2xl relative overflow-hidden">
+
+                        {/* ShareCar Branding Background Element */}
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-600/20 rounded-full blur-3xl"></div>
+
+                        <h3 className="text-xl font-bold text-white mb-1 flex items-center gap-2 relative z-10">
+                            <span>🏎️</span> ShareCar Protocol
+                        </h3>
+                        <p className="text-xs text-indigo-400 mb-4 tracking-wider uppercase">Simulación de Contrato Inteligente</p>
+
+                        <div className="space-y-3 text-sm font-mono bg-black/50 p-4 rounded-lg border border-slate-800 relative z-10">
+                            <div className="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+                                <span className="text-slate-500">Estado:</span>
+                                <span className="text-green-400 font-bold flex items-center gap-1">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    {txModal.status}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-[80px_1fr] gap-2">
+                                <span className="text-slate-500">Red:</span>
+                                <span className="text-slate-300">{txModal.network}</span>
+
+                                <span className="text-slate-500">Funcion:</span>
+                                <span className="text-indigo-300 whitespace-pre-wrap font-xs leading-tight">
+                                    {txModal.operation}
+                                </span>
+
+                                <span className="text-slate-500">Fee:</span>
+                                <span className="text-yellow-200">{txModal.fee}</span>
+
+                                <span className="text-slate-500">Source:</span>
+                                <span className="text-slate-300 truncate">{txModal.source}</span>
+                            </div>
+
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-800">
+                                <span className="text-slate-500 text-xs">Simulated Hash:</span>
+                                <span className="text-slate-600 text-[10px] break-all">{txModal.hash}</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 flex gap-3 relative z-10">
+                            <button
+                                onClick={cancelReservation}
+                                className="flex-1 px-4 py-3 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-800 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmReservation}
+                                className="flex-1 px-4 py-3 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-500/20 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span>🖊️</span> Firmar en Wallet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
             {/* HEADER & FORM SECTION */}
             <section>
                 <h2 className="text-2xl font-bold mb-6 text-white">Tus Vehículos (ShareCar)</h2>
+                {error && (
+                    <div className="mb-4 bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg">
+                        Error: {error}
+                    </div>
+                )}
 
                 <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
                     <h3 className="text-lg text-slate-300 mb-4">Publicar nuevo vehículo</h3>
@@ -206,7 +337,7 @@ export const VehicleList: React.FC = () => {
                                             onClick={() => handleReservation(v)}
                                             className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm py-2 rounded-lg font-medium transition-colors"
                                         >
-                                            {reserving === v.model ? "..." : "Reservar"}
+                                            {reserving === v.model ? (resStatus || "...") : "Reservar"}
                                         </button>
                                         <button
                                             onClick={() => toggleReviews(i)}
