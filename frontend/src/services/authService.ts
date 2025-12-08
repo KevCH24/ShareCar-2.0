@@ -1,32 +1,34 @@
 // src/services/authService.ts
 
 /**
- * Simplified Authentication Service using Simulated QR Codes
- * No biometric authentication - uses random credential strings
+ * Simplified Authentication Service
+ * Supports: Username login, Freighter wallet, and QR code (simulated)
  */
 
 interface StoredUser {
     username: string;
-    qrCredential: string; // Simulated QR code credential
+    email: string;
+    qrCode: string; // Simulated QR code for login
     createdAt: number;
 }
 
 interface AuthSession {
     username: string;
     loginTime: number;
+    loginMethod: 'username' | 'freighter' | 'qr';
 }
 
 const USERS_KEY = "sharecar_users";
 const SESSION_KEY = "sharecar_session";
 
-// Generate a random QR credential (simulated)
-function generateQRCredential(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let credential = 'SC-'; // ShareCar prefix
-    for (let i = 0; i < 32; i++) {
-        credential += chars.charAt(Math.floor(Math.random() * chars.length));
+// Generate a simulated QR code
+function generateQRCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = 'QR-';
+    for (let i = 0; i < 16; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    return credential;
+    return code;
 }
 
 // Get all registered users
@@ -57,14 +59,25 @@ function clearSession(): void {
 }
 
 /**
- * Register a new user (generates QR credential)
+ * Register a new user with username and email
  */
-export function registerUser(username: string): { success: boolean; qrCredential?: string; error?: string } {
+export function registerUser(username: string, email: string): { success: boolean; qrCode?: string; error?: string } {
     if (!username || username.trim().length === 0) {
         return { success: false, error: "El nombre de usuario es requerido" };
     }
 
+    if (!email || email.trim().length === 0) {
+        return { success: false, error: "El correo electrónico es requerido" };
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+        return { success: false, error: "Correo electrónico inválido" };
+    }
+
     const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
 
     // Check if user already exists
     const users = getUsers();
@@ -72,50 +85,107 @@ export function registerUser(username: string): { success: boolean; qrCredential
         return { success: false, error: "Este usuario ya está registrado" };
     }
 
-    // Generate QR credential
-    const qrCredential = generateQRCredential();
+    if (users.find(u => u.email.toLowerCase() === trimmedEmail.toLowerCase())) {
+        return { success: false, error: "Este correo ya está registrado" };
+    }
+
+    // Generate QR code
+    const qrCode = generateQRCode();
 
     // Save user
     const newUser: StoredUser = {
         username: trimmedUsername,
-        qrCredential,
+        email: trimmedEmail,
+        qrCode,
         createdAt: Date.now(),
     };
 
     users.push(newUser);
     saveUsers(users);
 
-    return { success: true, qrCredential };
+    return { success: true, qrCode };
 }
 
 /**
- * Login user with username and QR credential
+ * Login with username only
  */
-export function loginUser(username: string, qrCredential: string): { success: boolean; error?: string } {
+export function loginWithUsername(username: string): { success: boolean; error?: string } {
     if (!username || username.trim().length === 0) {
         return { success: false, error: "El nombre de usuario es requerido" };
     }
 
-    if (!qrCredential || qrCredential.trim().length === 0) {
-        return { success: false, error: "El código QR es requerido" };
-    }
-
     const trimmedUsername = username.trim();
-    const trimmedQR = qrCredential.trim();
 
     // Find user
     const users = getUsers();
-    const user = users.find(u =>
-        u.username.toLowerCase() === trimmedUsername.toLowerCase() &&
-        u.qrCredential === trimmedQR
-    );
+    const user = users.find(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
 
     if (!user) {
-        return { success: false, error: "Usuario o código QR incorrecto" };
+        return { success: false, error: "Usuario no encontrado. Por favor regístrate primero." };
     }
 
     // Create session
-    saveSession({ username: user.username, loginTime: Date.now() });
+    saveSession({
+        username: user.username,
+        loginTime: Date.now(),
+        loginMethod: 'username'
+    });
+
+    return { success: true };
+}
+
+/**
+ * Login with Freighter wallet (requires existing user)
+ */
+export function loginWithFreighter(username: string): { success: boolean; error?: string } {
+    if (!username || username.trim().length === 0) {
+        return { success: false, error: "Por favor ingresa tu nombre de usuario" };
+    }
+
+    const trimmedUsername = username.trim();
+
+    // Find user
+    const users = getUsers();
+    const user = users.find(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
+
+    if (!user) {
+        return { success: false, error: "Usuario no encontrado. Por favor regístrate primero." };
+    }
+
+    // Create session
+    saveSession({
+        username: user.username,
+        loginTime: Date.now(),
+        loginMethod: 'freighter'
+    });
+
+    return { success: true };
+}
+
+/**
+ * Login with QR code
+ */
+export function loginWithQR(qrCode: string): { success: boolean; error?: string } {
+    if (!qrCode || qrCode.trim().length === 0) {
+        return { success: false, error: "El código QR es requerido" };
+    }
+
+    const trimmedQR = qrCode.trim();
+
+    // Find user by QR code
+    const users = getUsers();
+    const user = users.find(u => u.qrCode === trimmedQR);
+
+    if (!user) {
+        return { success: false, error: "Código QR inválido" };
+    }
+
+    // Create session
+    saveSession({
+        username: user.username,
+        loginTime: Date.now(),
+        loginMethod: 'qr'
+    });
 
     return { success: true };
 }

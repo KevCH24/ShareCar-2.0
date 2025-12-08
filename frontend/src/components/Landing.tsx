@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchVehicles, type Vehicle } from "../stellar/vehicleQueries";
 import { VehicleCarousel } from "./VehicleCarousel";
-import { loginUser } from "../services/authService";
+import { loginWithUsername, loginWithFreighter, loginWithQR } from "../services/authService";
 import freighterApi from "@stellar/freighter-api";
 
 interface LandingProps {
@@ -34,21 +34,17 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
         loadVehicles();
     }, []);
 
-    const handleLogin = () => {
+    // Login with username only
+    const handleUsernameLogin = () => {
         if (!username.trim()) {
             setError("Por favor ingresa tu nombre de usuario");
-            return;
-        }
-
-        if (!qrCode.trim()) {
-            setError("Por favor ingresa tu código QR");
             return;
         }
 
         setLoginLoading(true);
         setError("");
 
-        const result = loginUser(username.trim(), qrCode.trim());
+        const result = loginWithUsername(username.trim());
 
         if (result.success) {
             onLogin();
@@ -59,7 +55,13 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
         setLoginLoading(false);
     };
 
+    // Login with Freighter
     const handleFreighter = async () => {
+        if (!username.trim()) {
+            setError("Por favor ingresa tu nombre de usuario primero");
+            return;
+        }
+
         setLoginLoading(true);
         setError("");
 
@@ -68,7 +70,15 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
             if (isConnected) {
                 const { address } = await freighterApi.getAddress();
                 console.log("Freighter connected:", address);
-                onLogin();
+
+                // Validate user exists
+                const result = loginWithFreighter(username.trim());
+
+                if (result.success) {
+                    onLogin();
+                } else {
+                    setError(result.error || "Error al autenticar con Freighter");
+                }
             } else {
                 setError("Freighter no detectado. Por favor instala la extensión.");
             }
@@ -78,6 +88,27 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
         } finally {
             setLoginLoading(false);
         }
+    };
+
+    // Login with QR code
+    const handleQRLogin = () => {
+        if (!qrCode.trim()) {
+            setError("Por favor ingresa tu código QR");
+            return;
+        }
+
+        setLoginLoading(true);
+        setError("");
+
+        const result = loginWithQR(qrCode.trim());
+
+        if (result.success) {
+            onLogin();
+        } else {
+            setError(result.error || "Error al iniciar sesión con QR");
+        }
+
+        setLoginLoading(false);
     };
 
     const scrollToTop = () => {
@@ -112,7 +143,7 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
                         </h1>
 
                         <p className="text-lg text-slate-400 leading-relaxed">
-                            Accede con tu usuario y código QR
+                            Elige tu método de acceso
                         </p>
                     </div>
 
@@ -123,27 +154,10 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
                         </div>
                     )}
 
-                    {/* Freighter Wallet Button */}
-                    <button
-                        onClick={handleFreighter}
-                        disabled={loginLoading}
-                        className="w-full py-3 px-4 bg-[#FFD700] hover:bg-[#F0C000] text-black font-bold rounded-lg mb-4 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                        {loginLoading ? "Conectando..." : "+ Conectar con Freighter"}
-                    </button>
-
-                    <div className="relative mb-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-slate-800"></div>
-                        </div>
-                        <div className="relative flex justify-center text-xs">
-                            <span className="bg-black px-2 text-slate-600">O usa tu código QR</span>
-                        </div>
-                    </div>
-
                     {/* Login Form */}
                     <div className="border border-slate-800 bg-slate-900/50 backdrop-blur-xl p-8 rounded-3xl shadow-2xl mb-6">
                         <div className="space-y-4">
+                            {/* Username Field */}
                             <div>
                                 <label className="text-xs text-slate-500 ml-1">Usuario</label>
                                 <input
@@ -151,11 +165,40 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
                                     placeholder="Escribe tu usuario"
                                     value={username}
                                     onChange={e => setUsername(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleUsernameLogin()}
                                     disabled={loginLoading}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
                                 />
                             </div>
 
+                            {/* Login with Username Button */}
+                            <button
+                                onClick={handleUsernameLogin}
+                                disabled={loginLoading}
+                                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/30 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                            >
+                                {loginLoading ? "Iniciando..." : "Iniciar con Usuario"}
+                            </button>
+
+                            {/* Freighter Button */}
+                            <button
+                                onClick={handleFreighter}
+                                disabled={loginLoading}
+                                className="w-full py-3 px-4 bg-[#FFD700] hover:bg-[#F0C000] text-black font-bold rounded-lg transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {loginLoading ? "Conectando..." : "+ Conectar con Freighter"}
+                            </button>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-slate-800"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs">
+                                    <span className="bg-slate-900 px-2 text-slate-600">O usa tu código QR</span>
+                                </div>
+                            </div>
+
+                            {/* QR Code Field */}
                             <div>
                                 <label className="text-xs text-slate-500 ml-1">Código QR</label>
                                 <input
@@ -163,21 +206,22 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
                                     placeholder="Pega tu código QR aquí"
                                     value={qrCode}
                                     onChange={e => setQrCode(e.target.value)}
-                                    onKeyPress={e => e.key === 'Enter' && handleLogin()}
+                                    onKeyPress={e => e.key === 'Enter' && handleQRLogin()}
                                     disabled={loginLoading}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
                                 />
                             </div>
 
+                            {/* Login with QR Button */}
                             <button
-                                onClick={handleLogin}
+                                onClick={handleQRLogin}
                                 disabled={loginLoading}
-                                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/30 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                                className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-all shadow-lg shadow-purple-500/30 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                             >
-                                {loginLoading ? "Iniciando..." : "Iniciar Sesión"}
+                                {loginLoading ? "Iniciando..." : "Iniciar con QR"}
                             </button>
 
-                            <div className="flex gap-3">
+                            <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={onRegister}
                                     disabled={loginLoading}
@@ -196,7 +240,7 @@ export const Landing: React.FC<LandingProps> = ({ onLogin, onRegister }) => {
                         </div>
 
                         <p className="mt-6 text-[10px] text-slate-600 text-center">
-                            🔒 Tu código QR es tu llave de acceso segura
+                            🔒 Tres formas de acceso: Usuario, Freighter o QR
                         </p>
                     </div>
 

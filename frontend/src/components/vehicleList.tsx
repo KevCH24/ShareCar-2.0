@@ -225,78 +225,15 @@ export const VehicleList: React.FC = () => {
             )}
 
 
-            {/* HEADER & FORM SECTION */}
+            {/* LIST SECTION */}
             <section>
-                <h2 className="text-2xl font-bold mb-6 text-white">Tus Vehículos (ShareCar)</h2>
+                <h2 className="text-2xl font-bold mb-6 text-white">Vehículos Disponibles</h2>
                 {error && (
                     <div className="mb-4 bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg">
                         Error: {error}
                     </div>
                 )}
 
-                <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
-                    <h3 className="text-lg text-slate-300 mb-4">Publicar nuevo vehículo</h3>
-                    <form onSubmit={handlePublish} className="flex flex-col gap-4">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <input
-                                placeholder="Modelo (ej. Toyota Corolla 2018)"
-                                value={pModel}
-                                onChange={e => setPModel(e.target.value)}
-                                className="flex-1 bg-white rounded-lg px-4 py-3 text-sm text-black focus:outline-none"
-                                required
-                            />
-                            <input
-                                placeholder="Marca (ej. Toyota)"
-                                value={pBrand}
-                                onChange={e => setPBrand(e.target.value)}
-                                className="flex-1 bg-white rounded-lg px-4 py-3 text-sm text-black focus:outline-none"
-                                required
-                            />
-                        </div>
-
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <input
-                                placeholder="Disponibilidad (ej. Lun-Dom 9:00-18:00)"
-                                value={pAvail}
-                                onChange={e => setPAvail(e.target.value)}
-                                className="flex-[1.5] bg-white rounded-lg px-4 py-3 text-sm text-black focus:outline-none"
-                                required
-                            />
-                            <input
-                                type="number"
-                                placeholder="Tarifa ($/hora)"
-                                value={pRate}
-                                onChange={e => setPRate(e.target.value)}
-                                className="w-32 bg-white rounded-lg px-4 py-3 text-sm text-black focus:outline-none"
-                                required
-                            />
-                        </div>
-
-                        <textarea
-                            placeholder="Breve descripción del vehículo..."
-                            value={pDesc}
-                            onChange={e => setPDesc(e.target.value)}
-                            className="w-full bg-white rounded-lg px-4 py-3 text-sm text-black focus:outline-none"
-                            rows={2}
-                            required
-                        />
-
-                        <div>
-                            <button
-                                type="submit"
-                                disabled={publishing}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                                {publishing ? pubStatus : "Publicar vehículo"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </section>
-
-            {/* LIST SECTION */}
-            <section>
-                <h3 className="text-xl font-bold text-white mb-4">Vehículos disponibles</h3>
 
                 {loading ? (
                     <p className="text-slate-500">Cargando...</p>

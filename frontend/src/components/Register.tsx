@@ -10,9 +10,10 @@ interface RegisterProps {
 
 export const Register: React.FC<RegisterProps> = ({ onBack, onRegisterSuccess }) => {
     const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [qrCredential, setQrCredential] = useState<string | null>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
 
     const handleRegister = () => {
         if (!username.trim()) {
@@ -20,13 +21,18 @@ export const Register: React.FC<RegisterProps> = ({ onBack, onRegisterSuccess })
             return;
         }
 
+        if (!email.trim()) {
+            setError("Por favor ingresa tu correo electrónico");
+            return;
+        }
+
         setLoading(true);
         setError("");
 
-        const result = registerUser(username.trim());
+        const result = registerUser(username.trim(), email.trim());
 
-        if (result.success && result.qrCredential) {
-            setQrCredential(result.qrCredential);
+        if (result.success && result.qrCode) {
+            setQrCode(result.qrCode);
         } else {
             setError(result.error || "Error al crear usuario");
         }
@@ -35,7 +41,7 @@ export const Register: React.FC<RegisterProps> = ({ onBack, onRegisterSuccess })
     };
 
     const handleQRModalClose = () => {
-        setQrCredential(null);
+        setQrCode(null);
         onRegisterSuccess();
     };
 
@@ -67,6 +73,18 @@ export const Register: React.FC<RegisterProps> = ({ onBack, onRegisterSuccess })
                                 placeholder="Escribe tu usuario"
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
+                                disabled={loading}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-slate-500 ml-1">Correo Electrónico</label>
+                            <input
+                                type="email"
+                                placeholder="tu@email.com"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
                                 onKeyPress={e => e.key === 'Enter' && handleRegister()}
                                 disabled={loading}
                                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"
@@ -91,15 +109,15 @@ export const Register: React.FC<RegisterProps> = ({ onBack, onRegisterSuccess })
                     </div>
 
                     <p className="mt-6 text-[10px] text-slate-600 text-center">
-                        🔒 Tu código QR será generado automáticamente
+                        🔒 Recibirás un código QR para iniciar sesión
                     </p>
                 </div>
             </div>
 
             {/* QR Code Modal */}
-            {qrCredential && (
+            {qrCode && (
                 <QRCodeModal
-                    qrData={qrCredential}
+                    qrData={qrCode}
                     username={username}
                     onClose={handleQRModalClose}
                 />
