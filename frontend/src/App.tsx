@@ -1,25 +1,71 @@
 // src/App.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminAddVehicle } from "./components/adminAddVehicle";
 import { VehicleList } from "./components/vehicleList";
 import { ReservationList } from "./components/reservationList";
 import { Landing } from "./components/Landing";
-import { Login } from "./components/Login";
+import { Register } from "./components/Register";
+import { isAuthenticated, getCurrentUser, logout } from "./services/authService";
 
-type View = "landing" | "login" | "vehicles" | "admin" | "reservations";
+type View = "landing" | "register" | "vehicles" | "admin" | "reservations";
 
 function App() {
   const [view, setView] = useState<View>("landing");
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+
+    // If user is authenticated and on landing/register page, redirect to vehicles
+    if (user && (view === "landing" || view === "register")) {
+      setView("vehicles");
+    }
+  }, [view]);
 
   // Simple "router" replacement
-  const navigate = (v: View) => setView(v);
+  const navigate = (v: View) => {
+    // Protect routes - require authentication
+    if (v !== "landing" && v !== "register" && !isAuthenticated()) {
+      setView("landing");
+      return;
+    }
+    setView(v);
+  };
+
+  const handleLogin = () => {
+    setCurrentUser(getCurrentUser());
+    navigate("vehicles");
+  };
+
+  const handleLogout = () => {
+    logout();
+    setCurrentUser(null);
+    setView("landing");
+  };
+
+  const handleRegisterSuccess = () => {
+    // After successful registration, go back to landing to login
+    setView("landing");
+  };
 
   if (view === "landing") {
-    return <Landing onEnter={() => navigate("login")} />;
+    return (
+      <Landing
+        onLogin={handleLogin}
+        onRegister={() => navigate("register")}
+      />
+    );
   }
 
-  if (view === "login") {
-    return <Login onLogin={() => navigate("vehicles")} />;
+  if (view === "register") {
+    return (
+      <Register
+        onBack={() => setView("landing")}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
+    );
   }
 
   return (
@@ -45,6 +91,20 @@ function App() {
               Publicar auto
             </NavButton>
           </nav>
+
+          <div className="flex items-center gap-3">
+            {currentUser && (
+              <span className="text-sm text-slate-400">
+                👤 <span className="text-indigo-400 font-medium">{currentUser}</span>
+              </span>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200 border border-slate-800 flex items-center gap-2"
+            >
+              <span>🚪</span> Cerrar sesión
+            </button>
+          </div>
         </div>
       </header>
 
