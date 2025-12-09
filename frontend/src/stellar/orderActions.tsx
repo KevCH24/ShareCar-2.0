@@ -37,10 +37,16 @@ async function getSignedClientForOrders() {
   return client;
 }
 
-// Ya lo tenías:
+// Return type with transaction details
+export interface TransactionResult {
+  orderId: number;
+  txHash: string;
+  timestamp: string;
+}
+
 export async function createOrderForProducts(
   productNames: string[]
-): Promise<number> {
+): Promise<TransactionResult> {
   const client = await getSignedClientForOrders();
   const tx = await client.create_order({ products: productNames });
 
@@ -50,7 +56,19 @@ export async function createOrderForProducts(
   console.log("Simulation result:", sim);
 
   const sent = await tx.signAndSend();
-  return sent.result as unknown as number;
+
+  // Extract transaction hash and create timestamp
+  const txHash = (sent as any).hash || `tx_${Date.now()}`;
+  const timestamp = new Date().toLocaleString("es-MX", {
+    dateStyle: "short",
+    timeStyle: "medium"
+  });
+
+  return {
+    orderId: sent.result as unknown as number,
+    txHash,
+    timestamp
+  };
 }
 
 // 👇 NUEVO: cambiar estado del pedido
