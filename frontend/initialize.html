@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicializar Contrato ShareCar</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-top: 0;
+            font-size: 28px;
+        }
+        .step {
+            background: #f7f9fc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .step p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #console {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+        #console.show {
+            display: block;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Inicializar Contrato ShareCar</h1>
+        
+        <div class="step">
+            <h3>📋 Paso 1: Verificar Freighter</h3>
+            <p>Asegúrate de tener Freighter instalado y conectado a <strong>Testnet</strong></p>
+        </div>
+
+        <div class="step">
+            <h3>💰 Paso 2: Fondos en Testnet</h3>
+            <p>Debes tener XLM de prueba en tu cuenta (ya lo hiciste ✅)</p>
+        </div>
+
+        <div class="step">
+            <h3>🔧 Paso 3: Inicializar</h3>
+            <p>Haz clic en el botón para inicializar el contrato con tu cuenta como administrador</p>
+        </div>
+
+        <button id="initBtn" onclick="initialize()">
+            🚀 Inicializar Contrato
+        </button>
+
+        <div id="console"></div>
+    </div>
+
+    <script type="module">
+        import { Client as ContractClient, networks } from './src/bindings/src/index.js';
+        import {
+          isConnected,
+          requestAccess,
+          getNetworkDetails,
+          signTransaction as freighterSignTransaction,
+        } from '@stellar/freighter-api';
+
+        const consoleEl = document.getElementById('console');
+        const btn = document.getElementById('initBtn');
+
+        function log(message, type = 'normal') {
+            consoleEl.classList.add('show');
+            const span = document.createElement('div');
+            span.className = type;
+            span.textContent = message;
+            consoleEl.appendChild(span);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        window.initialize = async function() {
+            btn.disabled = true;
+            consoleEl.innerHTML = '';
+            
+            log("🚀 Inicializando contrato de ShareCar...");
+
+            try {
+                // 1. Verificar Freighter
+                const connected = await isConnected();
+                if (!connected) {
+                    log("❌ Freighter no está instalado o no está conectado.", 'error');
+                    log("Por favor, instala Freighter y recarga la página.", 'warning');
+                    btn.disabled = false;
+                    return;
+                }
+                log("✅ Freighter conectado");
+
+                // 2. Obtener acceso
+                log("🔑 Solicitando acceso a la cuenta...");
+                const access = await requestAccess();
+                const address = typeof access === "string" ? access : access.address;
+                log(`✅ Cuenta conectada: ${address}`, 'success');
+
+                // 3. Obtener red
+                const net = await getNetworkDetails();
+                if (net.error) {
+                    log(`❌ Error al obtener la red: ${net.error}`, 'error');
+                    btn.disabled = false;
+                    return;
+                }
+
+                const rpcUrl = net.sorobanRpcUrl ?? "https://soroban-testnet.stellar.org";
+                log(`🌐 Red: Testnet`);
+                log(`🔗 RPC URL: ${rpcUrl}`);
+
+                // 4. Crear cliente
+                const client = new ContractClient({
+                    contractId: networks.testnet.contractId,
+                    networkPassphrase: networks.testnet.networkPassphrase,
+                    rpcUrl,
+                    publicKey: address,
+                    signTransaction: freighterSignTransaction,
+                });
+
+                log(`📋 Contract ID: ${networks.testnet.contractId}`);
+
+                // 5. Inicializar
+                log("📝 Preparando transacción de inicialización...");
+                const tx = await client.initialize({ admin: address });
+
+                log("🔍 Simulando transacción...");
+                await tx.simulate();
+                log("✅ Simulación exitosa");
+
+                log("🖊️  Firmando y enviando transacción...");
+                log("⚠️  Por favor, aprueba la transacción en Freighter", 'warning');
+                
+                const sent = await tx.signAndSend();
+                
+                log("🎉 ============================================", 'success');
+                log("✅ ¡CONTRATO INICIALIZADO EXITOSAMENTE!", 'success');
+                log("🎉 ============================================", 'success');
+                log(`📋 Transaction Hash: ${sent.hash || "N/A"}`);
+                log(`👤 Admin: ${address}`);
+                log("============================================");
+                log("");
+                log("✅ Ahora puedes hacer reservas de vehículos!", 'success');
+                log("🚗 Ve a http://localhost:5173/ y prueba reservar un vehículo", 'success');
+                
+            } catch (error) {
+                log("❌ Error al inicializar el contrato:", 'error');
+                log(error.message, 'error');
+                
+                if (error.message && error.message.includes("already initialized")) {
+                    log("");
+                    log("ℹ️  El contrato ya está inicializado.", 'warning');
+                    log("✅ Puedes proceder a hacer reservas.", 'success');
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
